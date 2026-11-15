@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 from cpf import DocumentoInvalido, mascarar, normalizar
 from emissor import emitir
-from repositorio import buscar_cliente
+from os_service import buscar_cliente
 
 _ATRIBUTOS_PADRAO = frozenset((
     "args", "asctime", "created", "exc_info", "exc_text", "filename", "funcName",
@@ -66,7 +66,7 @@ def handler(evento, contexto):
     try:
         cliente = buscar_cliente(documento)
     except Exception:
-        logger.exception("Falha ao consultar o banco", extra={**log, "documento": mascarar(documento)})
+        logger.exception("Falha ao consultar o OS Service", extra={**log, "documento": mascarar(documento)})
         return _resposta(503, {"detail": "Serviço temporariamente indisponível"}, request_id)
 
     if cliente is None:

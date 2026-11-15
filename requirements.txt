@@ -1,5 +1,2 @@
-# Dependências empacotadas junto com a função.
-# Ambas são Python puro — não há binário compilado, então o pacote é montado
-# em qualquer sistema operacional com um `pip install -t`.
-pg8000==1.31.2
+# Dependência empacotada junto com a função; a consulta ao OS Service usa só a biblioteca padrão.
 PyJWT==2.9.0

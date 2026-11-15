@@ -34,7 +34,6 @@ cov: ## Testes com cobertura
 	@test -x $(VENV)/bin/python || $(MAKE) --no-print-directory venv
 	$(VENV)/bin/python -m pytest --cov=src --cov-report=term-missing --cov-report=xml
 
-# Os .dist-info ficam no zip: o scramp, usado pelo pg8000, lê a própria versão por eles.
 build: clean ## Monta dist/lambda.zip
 	@mkdir -p build dist
 	@cp src/*.py build/

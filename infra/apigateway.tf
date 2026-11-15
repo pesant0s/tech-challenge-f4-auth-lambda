@@ -1,4 +1,4 @@
-# Rota explícita vence a coringa do infra-k8s: /auth/cpf chega aqui, o resto vai ao EKS (ADR-012).
+# Rota explícita vence a coringa /auth/{proxy+} da plataforma: /auth/cpf chega aqui, o resto vai ao OS Service.
 
 resource "aws_apigatewayv2_integration" "auth" {
   api_id                 = data.aws_ssm_parameter.apigateway_id.value

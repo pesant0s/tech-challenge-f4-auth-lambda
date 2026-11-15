@@ -22,9 +22,9 @@ provider "aws" {
 
   default_tags {
     tags = {
-      Project     = "tech-challenge"
-      Fase        = "03"
-      Repositorio = "tech-challenge-auth-lambda"
+      Project     = "tech-challenge-f4"
+      Fase        = "04"
+      Repositorio = "tech-challenge-f4-auth-lambda"
       ManagedBy   = "terraform"
     }
   }

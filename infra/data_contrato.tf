@@ -1,19 +1,29 @@
-# Rede e segredo do tech-challenge-infra-db; API Gateway do tech-challenge-infra-k8s.
+# Parâmetros publicados pela plataforma (contrato de infraestrutura da Fase 04).
 
-data "aws_ssm_parameter" "subnets_privadas" { name = "/tech-challenge/network/subnet_ids_privadas" }
-data "aws_ssm_parameter" "sg_cliente_db" { name = "/tech-challenge/network/sg_cliente_db_id" }
-data "aws_ssm_parameter" "secret_nome" { name = "/tech-challenge/database/secret_nome" }
-data "aws_ssm_parameter" "apigateway_id" { name = "/tech-challenge/apigateway/id" }
-data "aws_ssm_parameter" "apigateway_execucao_arn" { name = "/tech-challenge/apigateway/execucao_arn" }
-data "aws_ssm_parameter" "apigateway_endpoint" { name = "/tech-challenge/apigateway/endpoint" }
+locals {
+  prefixo_ssm = "/${var.prefixo}"
+}
 
-# Lido no apply e passado como variável de ambiente: sem NAT, a Lambda não alcança o Secrets Manager (ADR-010).
-data "aws_secretsmanager_secret_version" "app" {
-  secret_id = data.aws_ssm_parameter.secret_nome.value
+data "aws_ssm_parameter" "vpc_id" { name = "${local.prefixo_ssm}/rede/vpc_id" }
+data "aws_ssm_parameter" "vpc_cidr" { name = "${local.prefixo_ssm}/rede/cidr" }
+data "aws_ssm_parameter" "subnets_privadas" { name = "${local.prefixo_ssm}/rede/subnets_privadas" }
+data "aws_ssm_parameter" "nlb_dns" { name = "${local.prefixo_ssm}/nlb/dns" }
+data "aws_ssm_parameter" "apigateway_id" { name = "${local.prefixo_ssm}/apigateway/id" }
+data "aws_ssm_parameter" "apigateway_execucao_arn" { name = "${local.prefixo_ssm}/apigateway/execucao_arn" }
+data "aws_ssm_parameter" "apigateway_endpoint" { name = "${local.prefixo_ssm}/apigateway/endpoint" }
+
+# Lidos no apply e passados como variável de ambiente: sem NAT, a Lambda não alcança o SSM (ADR-010).
+data "aws_ssm_parameter" "secret_key" {
+  name            = "${local.prefixo_ssm}/segredos/jwt_secret_key"
+  with_decryption = true
+}
+
+data "aws_ssm_parameter" "token_interno" {
+  name            = "${local.prefixo_ssm}/segredos/token_interno"
+  with_decryption = true
 }
 
 locals {
-  segredo          = jsondecode(data.aws_secretsmanager_secret_version.app.secret_string)
   subnets_privadas = split(",", data.aws_ssm_parameter.subnets_privadas.value)
   nome_funcao      = "${var.prefixo}-auth"
 }

@@ -2,13 +2,13 @@
 .PHONY: help conta gateway venv test cov build clean init plan apply destroy implantar logs invoke
 
 AWS_REGION ?= us-east-1
-FUNCAO     := tech-challenge-auth
+FUNCAO     := tech-challenge-f4-auth
 VENV       := .venv
 PYTHON     ?= python3
 export AWS_REGION
 
 CONTA  = $(shell aws sts get-caller-identity --query Account --output text)
-BUCKET = tech-challenge-tfstate-$(CONTA)
+BUCKET = tech-challenge-f4-tfstate-$(CONTA)
 # Delimitador `|` no sed: num Makefile, `#` abriria um comentário.
 GITHUB_OWNER ?= $(shell git config --get remote.origin.url 2>/dev/null | sed -E 's|^.*github\.com[:/]([^/]+)/.*$$|\1|')
 
@@ -20,7 +20,7 @@ conta: ## Mostra em qual conta AWS os comandos vão atuar
 	@echo "Conta AWS: $(CONTA) · perfil: $${AWS_PROFILE:-credenciais do ambiente} · região: $(AWS_REGION)"
 
 gateway: conta
-	@aws ssm get-parameter --name /tech-challenge/apigateway/id >/dev/null 2>&1 || { echo "O API Gateway não existe nesta conta: rode 'make up' no tech-challenge-infra-k8s."; exit 1; }
+	@aws ssm get-parameter --name /tech-challenge-f4/apigateway/id >/dev/null 2>&1 || { echo "O API Gateway não existe nesta conta: rode 'make up' no tech-challenge-f4-plataforma."; exit 1; }
 
 venv: ## Cria o ambiente virtual com as dependências
 	$(PYTHON) -m venv $(VENV)
@@ -63,10 +63,10 @@ destroy: conta build ## Remove a função e a rota
 
 implantar: ## Aciona o pipeline de publicação na main
 	@test -n "$(GITHUB_OWNER)" || { echo "Dono do repositório desconhecido: rode com GITHUB_OWNER=seu-usuario."; exit 1; }
-	gh workflow run ci-cd.yml --ref main --repo $(GITHUB_OWNER)/tech-challenge-auth-lambda
+	gh workflow run ci-cd.yml --ref main --repo $(GITHUB_OWNER)/tech-challenge-f4-auth-lambda
 
 logs: conta ## Acompanha os logs da função
 	aws logs tail /aws/lambda/$(FUNCAO) --follow
 
 invoke: conta ## Testa a autenticação de ponta a ponta (CPF=...)
-	@curl -s -X POST "$$(aws ssm get-parameter --name /tech-challenge/apigateway/endpoint --query Parameter.Value --output text)/auth/cpf" -H 'content-type: application/json' -d '{"cpf":"$(or $(CPF),529.982.247-25)"}' | python3 -m json.tool
+	@curl -s -X POST "$$(aws ssm get-parameter --name /tech-challenge-f4/apigateway/endpoint --query Parameter.Value --output text)/auth/cpf" -H 'content-type: application/json' -d '{"cpf":"$(or $(CPF),529.982.247-25)"}' | python3 -m json.tool

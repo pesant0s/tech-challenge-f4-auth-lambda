@@ -1,6 +1,7 @@
 name: CI/CD
 
-# Testes e empacotamento sempre; publicação só com AMBIENTE_ATIVO=true (ADR-013, no tech-challenge-infra-k8s).
+# Testes e empacotamento sempre; publicação só com AMBIENTE_ATIVO=true (ADR-013).
+# Contrato: tech-challenge-f4-plataforma/docs/infraestrutura/contrato.md.
 on:
   push:
     branches: [develop, main]
@@ -15,6 +16,7 @@ concurrency:
 env:
   AWS_REGION: us-east-1
   TF_VERSION: "1.10.5"
+  PREFIXO_SSM: /tech-challenge-f4
 
 permissions:
   contents: read
@@ -88,6 +90,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    env:
+      TEM_ROLE: ${{ secrets.AWS_ROLE_ARN != '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -97,19 +101,22 @@ jobs:
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
+      # Conta comum: OIDC. Laboratório (AWS Academy): credenciais da sessão.
       - name: Autenticar na AWS via OIDC
-        id: aws
-        continue-on-error: true
+        if: env.TEM_ROLE == 'true'
         uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Explicar falha de autenticação
-        if: steps.aws.outcome == 'failure'
-        run: |
-          echo "::error::AMBIENTE_ATIVO=true, mas a role não pôde ser assumida: o ambiente foi destruído sem 'make down' ou falta o secret AWS_ROLE_ARN."
-          exit 1
+      - name: Autenticar na AWS com as credenciais da sessão
+        if: env.TEM_ROLE != 'true'
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - run: make build
 
@@ -117,15 +124,19 @@ jobs:
         working-directory: infra
         run: |
           terraform init -input=false \
-            -backend-config="bucket=tech-challenge-tfstate-$(aws sts get-caller-identity --query Account --output text)" \
+            -backend-config="bucket=tech-challenge-f4-tfstate-$(aws sts get-caller-identity --query Account --output text)" \
             -backend-config="region=$AWS_REGION"
           terraform apply -input=false -auto-approve
 
       # Um CPF sabidamente inválido tem que voltar 400; um 5xx indica problema de VPC, segredo ou pacote.
       - name: Teste de fumaça
         run: |
-          ENDPOINT=$(aws ssm get-parameter --name /tech-challenge/apigateway/endpoint --query Parameter.Value --output text)
-          STATUS=$(curl -s -o /tmp/resposta.json -w "%{http_code}" -X POST "$ENDPOINT/auth/cpf" \
-            -H 'content-type: application/json' -d '{"cpf":"11111111111"}')
+          ENDPOINT=$(aws ssm get-parameter --name "$PREFIXO_SSM/apigateway/endpoint" --query Parameter.Value --output text)
+          for _ in $(seq 1 6); do
+            STATUS=$(curl -s -o /tmp/resposta.json -w "%{http_code}" -X POST "$ENDPOINT/auth/cpf" \
+              -H 'content-type: application/json' -d '{"cpf":"11111111111"}')
+            [ "$STATUS" = "400" ] && break
+            sleep 10
+          done
           cat /tmp/resposta.json
           test "$STATUS" = "400"

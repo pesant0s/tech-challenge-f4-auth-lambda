@@ -13,7 +13,7 @@ variable "perfil_aws" {
 variable "prefixo" {
   description = "Prefixo dos nomes de recurso"
   type        = string
-  default     = "tech-challenge"
+  default     = "tech-challenge-f4"
 }
 
 variable "caminho_pacote" {
